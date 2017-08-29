@@ -3,7 +3,7 @@
 
 #include <Servo.h>
 #include <Oscillator.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 
 #include <US.h>
 #include <LedMatrix.h>
@@ -23,18 +23,20 @@
 #define MEDIUM      15
 #define BIG         30
 
-#define PIN_Buzzer  10
-#define PIN_Trigger 8
-#define PIN_Echo    9
-#define PIN_NoiseSensor A6
 
 
 class Otto
 {
   public:
 
+    // -- Constructor
+    Otto();
+
     //-- Otto initialization
-    void init(int YL, int YR, int RL, int RR, bool load_calibration=true, int NoiseSensor=PIN_NoiseSensor, int Buzzer=PIN_Buzzer, int USTrigger=PIN_Trigger, int USEcho=PIN_Echo);
+    void initLegs(int YL, int YR, int RL, int RR, bool load_calibration=true);
+    void initBuzzer(int pin);
+    void initNoiseSensor(int pin);
+    void initUltrasonic(int trigger_pin, int echo_pin);
 
     //-- Attach & detach functions
     void attachServos();
@@ -112,6 +114,9 @@ class Otto
     float increment[4];
 
     bool isOttoResting;
+    bool isUseBuzzer;
+    bool isUseNoiseSensor;
+    bool isUseUltrasonic;
 
     unsigned long int getMouthShape(int number);
     unsigned long int getAnimShape(int anim, int index);

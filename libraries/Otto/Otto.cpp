@@ -1,19 +1,16 @@
-
-#if defined(ARDUINO) && ARDUINO >= 100
-  #include "Arduino.h"
-#else
-  #include "WProgram.h"
-  #include <pins_arduino.h>
-#endif
-
-
+#include "Arduino.h"
 #include "Otto.h"
 #include <Oscillator.h>
 #include <US.h>
 
+Otto::Otto() {
+  isOttoResting = false;
+  isUseBuzzer = false;
+  isUseNoiseSensor = false;
+  isUseUltrasonic = false;
+}
 
-
-void Otto::init(int YL, int YR, int RL, int RR, bool load_calibration, int NoiseSensor, int Buzzer, int USTrigger, int USEcho) {
+void Otto::initLegs(int YL, int YR, int RL, int RR, bool load_calibration) {
   
   servo_pins[0] = YL;
   servo_pins[1] = YR;
@@ -23,6 +20,7 @@ void Otto::init(int YL, int YR, int RL, int RR, bool load_calibration, int Noise
   attachServos();
   isOttoResting=false;
 
+/*
   if (load_calibration) {
     for (int i = 0; i < 4; i++) {
       int servo_trim = EEPROM.read(i);
@@ -30,19 +28,37 @@ void Otto::init(int YL, int YR, int RL, int RR, bool load_calibration, int Noise
       servo[i].SetTrim(servo_trim);
     }
   }
-  
+  */
   for (int i = 0; i < 4; i++) servo_position[i] = 90;
-
-  //US sensor init with the pins:
-  us.init(USTrigger, USEcho);
-
-  //Buzzer & noise sensor pins: 
-  pinBuzzer = Buzzer;
-  pinNoiseSensor = NoiseSensor;
-
-  pinMode(Buzzer,OUTPUT);
-  pinMode(NoiseSensor,INPUT);
 }
+
+
+void Otto::initBuzzer(int pin) {
+
+  isUseBuzzer = true;
+
+  pinBuzzer = pin;
+  pinMode(pinBuzzer,OUTPUT);    
+}
+
+void Otto::initNoiseSensor(int pin) {
+
+  isUseNoiseSensor = true;
+
+  pinNoiseSensor = pin;
+  pinMode(pin,INPUT);
+
+}
+
+void Otto::initUltrasonic(int trigger_pin, int echo_pin) {
+
+  isUseUltrasonic = true;
+
+ //US sensor init with the pins:
+  us.init(trigger_pin, echo_pin);
+}
+
+  
 
 ///////////////////////////////////////////////////////////////////
 //-- ATTACH & DETACH FUNCTIONS ----------------------------------//
@@ -73,10 +89,11 @@ void Otto::setTrims(int YL, int YR, int RL, int RR) {
 
 void Otto::saveTrimsOnEEPROM() {
   
+/*
   for (int i = 0; i < 4; i++){ 
       EEPROM.write(i, servo[i].getTrim());
   } 
-      
+  */    
 }
 
 
@@ -533,6 +550,10 @@ void Otto::flapping(float steps, int T, int h, int dir){
 //---------------------------------------------------------
 float Otto::getDistance(){
 
+    if(!isUseUltrasonic){
+      return 0;
+  }
+
   return us.read();
 }
 
@@ -541,6 +562,10 @@ float Otto::getDistance(){
 //-- Otto getNoise: return Otto's noise sensor measure
 //---------------------------------------------------------
 int Otto::getNoise(){
+
+  if(!isUseNoiseSensor){
+    return 0;
+  }
 
   int noiseLevel = 0;
   int noiseReadings = 0;
@@ -668,6 +693,10 @@ unsigned long int Otto::getAnimShape(int anim, int index){
     case wave:
         return wave_code[index];
         break;    
+    default:
+      // add return 0 to avoid compile error
+      return 0;
+      break;
   }   
 }
 
@@ -737,6 +766,11 @@ void Otto::bendTones (float initFrequency, float finalFrequency, float prop, lon
 
 
 void Otto::sing(int songName){
+
+  if(!isUseBuzzer){
+    return;
+  }
+
   switch(songName){
 
     case S_connection:

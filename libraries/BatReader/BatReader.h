@@ -18,7 +18,7 @@
 ////////////////////////////
 // Definitions            //
 ////////////////////////////
-#define BAT_PIN A7
+#define BAT_PIN 3 //Bear 
 #define BAT_MAX	4.2
 #define BAT_MIN	3.25
 #define ANA_REF	5
