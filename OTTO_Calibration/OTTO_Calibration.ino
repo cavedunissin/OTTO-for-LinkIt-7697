@@ -123,7 +123,7 @@ void setup()
   homeBtn.setColor(RC_PINK);
   LRemote.addControl(homeBtn);
 
-  stiffBtn.setText("Sitff");
+  stiffBtn.setText("Stiff");
   stiffBtn.setPos(1, 5);
   stiffBtn.setSize(1, 1);
   stiffBtn.setColor(RC_PINK);
