@@ -2,33 +2,40 @@
 #include "Otto.h"
 #include <Oscillator.h>
 #include <US.h>
+#include <EEPROM.h>
 
 Otto::Otto() {
   isOttoResting = false;
   isUseBuzzer = false;
   isUseNoiseSensor = false;
   isUseUltrasonic = false;
+  isUseLEDMatrix = false;
 }
 
-void Otto::initLegs(int YL, int YR, int RL, int RR, bool load_calibration) {
+void Otto::initLegs(int LY, int RY, int LR, int RR, bool load_calibration) {
   
-  servo_pins[0] = YL;
-  servo_pins[1] = YR;
-  servo_pins[2] = RL;
+  servo_pins[0] = LY;
+  servo_pins[1] = RY;
+  servo_pins[2] = LR;
   servo_pins[3] = RR;
 
   attachServos();
   isOttoResting=false;
 
-/*
+
   if (load_calibration) {
     for (int i = 0; i < 4; i++) {
       int servo_trim = EEPROM.read(i);
+      
+      Serial.print(servo_trim);
+      Serial.print(" ") ;
+
       if (servo_trim > 128) servo_trim -= 256;
       servo[i].SetTrim(servo_trim);
     }
   }
-  */
+  Serial.println(" ") ;
+
   for (int i = 0; i < 4; i++) servo_position[i] = 90;
 }
 
@@ -58,6 +65,12 @@ void Otto::initUltrasonic(int trigger_pin, int echo_pin) {
   us.init(trigger_pin, echo_pin);
 }
 
+void Otto::initLEDMatrix(int din_pin, int cs_pin, int clk_pin, int dir) {
+
+  isUseLEDMatrix = true;
+  ledMatrix.init(din_pin, cs_pin, clk_pin, 1); 
+  ledOrientation = (MatrixRotation)dir;  
+}
   
 
 ///////////////////////////////////////////////////////////////////
@@ -80,20 +93,48 @@ void Otto::detachServos(){
 ///////////////////////////////////////////////////////////////////
 //-- OSCILLATORS TRIMS ------------------------------------------//
 ///////////////////////////////////////////////////////////////////
-void Otto::setTrims(int YL, int YR, int RL, int RR) {
-  servo[0].SetTrim(YL);
-  servo[1].SetTrim(YR);
-  servo[2].SetTrim(RL);
+void Otto::setTrims(int LY, int RY, int LR, int RR) {
+  servo[0].SetTrim(LY);
+  servo[1].SetTrim(RY);
+  servo[2].SetTrim(LR);
   servo[3].SetTrim(RR);
 }
 
+void Otto::getTrims(int &LY, int &RY, int &LR, int &RR) {
+
+  LY = EEPROM.read(0);
+  if (LY > 128) LY -= 256;
+
+  RY = EEPROM.read(1);  
+  if (RY > 128) RY -= 256;
+
+  LR = EEPROM.read(2);  
+  if (LR > 128) LR -= 256;
+
+  RR = EEPROM.read(3);  
+  if (RR > 128) RR -= 256;
+
+
+  Serial.print("LY:");
+  Serial.print(LY);
+
+  Serial.print(" RY:");
+  Serial.print(RY);
+
+  Serial.print(" LR:");
+  Serial.print(LR);
+
+  Serial.print(" RR:");
+  Serial.print(RR);
+
+
+}
+
 void Otto::saveTrimsOnEEPROM() {
-  
-/*
+
   for (int i = 0; i < 4; i++){ 
       EEPROM.write(i, servo[i].getTrim());
   } 
-  */    
 }
 
 
@@ -186,6 +227,13 @@ void Otto::setRestState(bool state){
 
     isOttoResting = state;
 }
+
+void Otto::stiff(){
+
+    int homes[4]={90, 90, 90, 90}; //All the servos at rest position
+    _moveServos(500,homes);   //Move the servos in half a second
+}
+
 
 
 ///////////////////////////////////////////////////////////////////
@@ -627,56 +675,303 @@ double Otto::getBatteryVoltage(){
 //-- MOUTHS & ANIMATIONS ----------------------------------------//
 ///////////////////////////////////////////////////////////////////
 
-unsigned long int Otto::getMouthShape(int number){
-  unsigned long int types []={zero_code,one_code,two_code,three_code,four_code,five_code,six_code,seven_code,eight_code,
+MouthData Otto::getMouthShape(int number){
+  MouthData types [] = {zero_code,one_code,two_code,three_code,four_code,five_code,six_code,seven_code,eight_code,
   nine_code,smile_code,happyOpen_code,happyClosed_code,heart_code,bigSurprise_code,smallSurprise_code,tongueOut_code,
   vamp1_code,vamp2_code,lineMouth_code,confused_code,diagonal_code,sad_code,sadOpen_code,sadClosed_code,
   okMouth_code, xMouth_code,interrogation_code,thunder_code,culito_code,angry_code};
-
+  
   return types[number];
 }
 
 
-unsigned long int Otto::getAnimShape(int anim, int index){
+MouthData Otto::getAnimShape(int anim, int index){
 
-  unsigned long int littleUuh_code[]={
-     0b00000000000000001100001100000000,
-     0b00000000000000000110000110000000,
-     0b00000000000000000011000011000000,
-     0b00000000000000000110000110000000,
-     0b00000000000000001100001100000000,
-     0b00000000000000011000011000000000,
-     0b00000000000000110000110000000000,
-     0b00000000000000011000011000000000  
+  static const uint8_t littleUuh_code[][8]={
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00011000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00001100,
+      B00001100,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000110,
+      B00000110,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00001100,
+      B00001100,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00011000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00110000,
+      B00110000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B01100000,
+      B01100000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00110000,
+      B00110000,
+      B00000000,
+     }, 
   };
 
-  unsigned long int dreamMouth_code[]={
-     0b00000000000000000000110000110000,
-     0b00000000000000010000101000010000,  
-     0b00000000011000100100100100011000,
-     0b00000000000000010000101000010000           
+  static const uint8_t dreamMouth_code[][8]={
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B01100000,
+      B01100000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00100000,
+      B01010000,
+      B00100000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00110000,
+      B01001000,
+      B01001000,
+      B00110000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00100000,
+      B01010000,
+      B00100000,
+     },    
   };
 
-  unsigned long int adivinawi_code[]={
-     0b00100001000000000000000000100001,
-     0b00010010100001000000100001010010,
-     0b00001100010010100001010010001100,
-     0b00000000001100010010001100000000,
-     0b00000000000000001100000000000000,
-     0b00000000000000000000000000000000
+  static const uint8_t adivinawi_code[][8]={
+     {B00000000,
+      B00000000,
+      B00000000,
+      B01000010,
+      B00000000,
+      B00000000,
+      B00000000,
+      B01000010,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00100100,
+      B01000010,
+      B00000000,
+      B01000010,
+      B00100100,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00100100,
+      B01000010,
+      B00100100,
+      B00011000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00100100,
+      B00011000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00000000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+     },
   };
 
-  unsigned long int wave_code[]={
-     0b00001100010010100001000000000000,
-     0b00000110001001010000100000000000,
-     0b00000011000100001000010000100000,
-     0b00000001000010000100001000110000,
-     0b00000000000001000010100100011000,
-     0b00000000000000100001010010001100,
-     0b00000000100000010000001001000110,
-     0b00100000010000001000000100000011,
-     0b00110000001000000100000010000001,
-     0b00011000100100000010000001000000    
+  static const uint8_t wave_code[][8]={
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00011000,
+      B00100100,
+      B01000010,
+      B00000000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00001100,
+      B00010010,
+      B00100000,
+      B01000000,
+      B00000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000110,
+      B00001000,
+      B00010000,
+      B00100000,
+      B01000000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000010,
+      B00000100,
+      B00001000,
+      B00010000,
+      B01100000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000010,
+      B00000100,
+      B01001000,
+      B00110000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B01000010,
+      B00100100,
+      B00011000,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B01000000,
+      B00100000,
+      B00010010,
+      B00001100,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B01000000,
+      B00100000,
+      B00010000,
+      B00001000,
+      B00000110,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B01100000,
+      B00010000,
+      B00001000,
+      B00000100,
+      B00000010,
+     },
+
+     {B00000000,
+      B00000000,
+      B00000000,
+      B00110000,
+      B01001000,
+      B00000100,
+      B00000010,
+      B00000000,
+     },
   };
 
   switch  (anim){
@@ -702,25 +997,21 @@ unsigned long int Otto::getAnimShape(int anim, int index){
 
 
 void Otto::putAnimationMouth(unsigned long int aniMouth, int index){
-
-      ledmatrix.writeFull(getAnimShape(aniMouth,index));
+  ledMatrix.writeMatrix(getAnimShape(aniMouth,index), ledOrientation);
 }
 
 
-void Otto::putMouth(unsigned long int mouth, bool predefined){
+void Otto::putMouth(MouthData mouth){  
+  ledMatrix.writeMatrix(mouth, ledOrientation);
+}
 
-  if (predefined){
-    ledmatrix.writeFull(getMouthShape(mouth));
-  }
-  else{
-    ledmatrix.writeFull(mouth);
-  }
+void Otto::putMouth(int predefinedIndex){
+  ledMatrix.writeMatrix(getMouthShape(predefinedIndex), ledOrientation);
 }
 
 
 void Otto::clearMouth(){
-
-  ledmatrix.clearMatrix();
+  ledMatrix.clearMatrix();
 }
 
 

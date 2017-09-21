@@ -18,13 +18,13 @@
 ////////////////////////////
 // Definitions            //
 ////////////////////////////
-#define BAT_PIN 3 //Bear 
-#define BAT_MAX	4.2
+#define BAT_PIN 14 
+#define BAT_MAX	4.7
 #define BAT_MIN	3.25
-#define ANA_REF	5
 #define SLOPE	100/(BAT_MAX - BAT_MIN)
 #define OFFSET	(100*BAT_MIN)/(BAT_MAX - BAT_MIN)
-
+  
+  
 class BatReader
 {
 public:

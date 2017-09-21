@@ -3,10 +3,11 @@
 
 #include <Servo.h>
 #include <Oscillator.h>
-//#include <EEPROM.h>
+#include <EEPROM.h>
 
 #include <US.h>
-#include <LedMatrix.h>
+//#include <LedMatrix.h>
+#include <MaxMatrix.h>
 #include <BatReader.h>
 
 #include "Otto_mouths.h"
@@ -23,8 +24,6 @@
 #define MEDIUM      15
 #define BIG         30
 
-
-
 class Otto
 {
   public:
@@ -33,17 +32,19 @@ class Otto
     Otto();
 
     //-- Otto initialization
-    void initLegs(int YL, int YR, int RL, int RR, bool load_calibration=true);
+    void initLegs(int LY, int RY, int LR, int RR, bool load_calibration=true);
     void initBuzzer(int pin);
     void initNoiseSensor(int pin);
     void initUltrasonic(int trigger_pin, int echo_pin);
+    void initLEDMatrix(int din_pin, int cs_pin, int clk_pin, int dir=MATRIX_DIR_0);
 
     //-- Attach & detach functions
     void attachServos();
     void detachServos();
 
     //-- Oscillator Trims
-    void setTrims(int YL, int YR, int RL, int RR);
+    void setTrims(int LY, int RY, int LR, int RR);
+    void getTrims(int &LY, int &RL, int &LR, int &RR);
     void saveTrimsOnEEPROM();
 
     //-- Predetermined Motion Functions
@@ -55,6 +56,9 @@ class Otto
     bool getRestState();
     void setRestState(bool state);
     
+    //--Stiff
+    void stiff();
+
     //-- Predetermined Motion Functions
     void jump(float steps=1, int T = 2000);
 
@@ -82,7 +86,8 @@ class Otto
     double getBatteryVoltage();
     
     //-- Mouth & Animations
-    void putMouth(unsigned long int mouth, bool predefined = true);
+    void putMouth(MouthData mouth);
+    void putMouth(int predefinedIndex);
     void putAnimationMouth(unsigned long int anim, int index);
     void clearMouth();
 
@@ -97,7 +102,7 @@ class Otto
  
   private:
     
-    LedMatrix ledmatrix;
+    MaxMatrix ledMatrix;
     BatReader battery;
     Oscillator servo[4];
     US us;
@@ -108,7 +113,8 @@ class Otto
 
     int pinBuzzer;
     int pinNoiseSensor;
-    
+    int ledMatrix_dir;
+
     unsigned long final_time;
     unsigned long partial_time;
     float increment[4];
@@ -117,9 +123,12 @@ class Otto
     bool isUseBuzzer;
     bool isUseNoiseSensor;
     bool isUseUltrasonic;
+    bool isUseLEDMatrix;
 
-    unsigned long int getMouthShape(int number);
-    unsigned long int getAnimShape(int anim, int index);
+    MatrixRotation ledOrientation;
+
+    MouthData getMouthShape(int number);
+    MouthData getAnimShape(int anim, int index);
     void _execute(int A[4], int O[4], int T, double phase_diff[4], float steps);
 
 };
